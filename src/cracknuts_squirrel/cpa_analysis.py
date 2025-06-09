@@ -183,7 +183,7 @@ class CPAAnalysis(PPBasic):
 
 if __name__ == "__main__":
     # 示例用法
-    cpa = CPAAnalysis(input_path='../template//dataset//nut476_aes_random_data.zarr')
+    cpa = CPAAnalysis(input_path=r'D:\project\cracknuts\demo\jupyter\dataset\20250521110621.zarr')
     cpa.auto_out_filename()
     cpa.set_range(sample_range=(500, 10000))  # 设置分析的采样点范围
     cpa.perform_cpa()

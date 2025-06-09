@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cracknuts-squirrel"
+description = "A Python library for side-channel analysis"
+dynamic = ["version"]
+requires-python = ">=3.12"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "Dingzb", email = "dingzibiao@gmail.com" }]
+maintainers = [{ name = "Dingzb", email = "dingzibiao@gmail.com" }]
+dependencies = [
+    "numpy~=1.26.4",
+    "pycryptodome~=3.23.0",
+    "zarr~=2.18.2",
+    "packaging~=24.1",
+    "numba~=0.61.2",
+    "dask~=2025.5.1"
+]
+
+[project.optional-dependencies]
+jupyter = [
+    "jupyter~=1.1.1",
+]
+
+[project.urls]
+homepage = "https://cracknuts.io"
+
+[tool.setuptools.dynamic]
+version = { attr = "cracknuts_squirrel.__version__" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = ["demo", "tests", "docs"]
+
+[tool.ruff.lint]
+extend-select = [
+    "F",
+    "E",
+    "W",
+    "UP",
+]
+
+[tool.typos.files]
+extend-exclude = [
+    "demo",
+    "tests"
+]
