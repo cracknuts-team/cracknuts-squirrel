@@ -1,6 +1,6 @@
 import numpy as np
 import zarr
-from preprocessingBasic import PPBasic
+from cracknuts_squirrel.preprocessing_basic import PPBasic
 import matplotlib.pyplot as plt
 
 # Hamming weights of the values 0-255 used for model values
