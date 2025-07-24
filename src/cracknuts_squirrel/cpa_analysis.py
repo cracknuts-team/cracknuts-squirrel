@@ -24,6 +24,8 @@ AES_SBOX = np.array([99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,118,
                     225,248,152,17,105,217,142,148,155,30,135,233,206,85,40,223,
                     140,161,137,13,191,230,66,104,65,153,45,15,176,84,187,22])
 
+AES_invSBOX = np.array([82,9,106,213,48,54,165,56,191,64,163,158,129,243,215,251,124,227,57,130,155,47,255,135,52,142,67,68,196,222,233,203,84,123,148,50,166,194,35,61,238,76,149,11,66,250,195,78,8,46,161,102,40,217,36,178,118,91,162,73,109,139,209,37,114,248,246,100,134,104,152,22,212,164,92,204,93,101,182,146,108,112,72,80,253,237,185,218,94,21,70,87,167,141,157,132,144,216,171,0,140,188,211,10,247,228,88,5,184,179,69,6,208,44,30,143,202,63,15,2,193,175,189,3,1,19,138,107,58,145,17,65,79,103,220,234,151,242,207,206,240,180,230,115,150,172,116,34,231,173,53,133,226,249,55,232,28,117,223,110,71,241,26,113,29,41,197,137,111,183,98,14,170,24,190,27,252,86,62,75,198,210,121,32,154,219,192,254,120,205,90,244,31,221,168,51,136,7,199,49,177,18,16,89,39,128,236,95,96,81,127,169,25,181,74,13,45,229,122,159,147,201,156,239,160,224,59,77,174,42,245,176,200,235,187,60,131,83,153,97,23,43,4,126,186,119,214,38,225,105,20,99,85,33,12,125])
+
 # Hamming weights of the values 0-255 used for model values
 WEIGHTS = np.array([0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,
                     1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
@@ -43,55 +45,76 @@ WEIGHTS = np.array([0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,
                     4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8],
                     np.float32)
 
+@nb.njit(parallel=True)
+def inv_shift_rows(state):
+    """
+    AES逆向行移位操作
+    :param state: 16字节的状态矩阵(4x4)
+    :return: 逆向行移位后的状态
+    """
+    # 将1D数组转换为4x4矩阵
+    for i in nb.prange(state.shape[0]):
+        state1 = state[i].reshape(4,4)
+        
+        # 对每一行进行不同的右移
+        state1[1] = np.roll(state1[1], -1)
+        state1[2] = np.roll(state1[2], -2)
+        state1[3] = np.roll(state1[3], -3)
+
+        state[i] = state1.flatten()
+    
+    return state
+
 class CPAAnalysis(PPBasic):
     """
     AES-CPA分析类，继承自预处理基类PPBasic
     """
-    def __init__(self, input_path=None, output_path=None, byte_pos=list(range(16)), sample_range=(0, None), **kwargs):
+    def __init__(self, input_path=None, output_path=None, byte_pos=list(range(16)), sample_range=(0, None), dr='enc', **kwargs):
         super().__init__(input_path=input_path, output_path=output_path, **kwargs)
         self.byte_pos = byte_pos if isinstance(byte_pos, (list, tuple)) else [byte_pos] 
         self.sample_range = sample_range
+        self.dr = dr
 
 
 
-    def update(self, traces: np.ndarray, data: np.ndarray):
-        # Update the number of rows processed
-        self.trace_count += traces.shape[0]
-        # Update sample accumulator
-        self.sample_sum += np.sum(traces, axis=0)
-        # Update sample squared accumulator
-        self.sample_sq_sum += np.sum(np.square(traces), axis=0)
-        # Update model accumulator
-        self.model_sum += np.sum(data, axis=0)
-        # Update model squared accumulator
-        self.model_sq_sum += np.sum(np.square(data), axis=0)
-        data = data.reshape((data.shape[0], -1))
-        # Update product accumulator
-        self.prod_sum += np.matmul(data.T, traces)
+    # def update(self, traces: np.ndarray, data: np.ndarray):
+    #     # Update the number of rows processed
+    #     self.trace_count += traces.shape[0]
+    #     # Update sample accumulator
+    #     self.sample_sum += np.sum(traces, axis=0)
+    #     # Update sample squared accumulator
+    #     self.sample_sq_sum += np.sum(np.square(traces), axis=0)
+    #     # Update model accumulator
+    #     self.model_sum += np.sum(data, axis=0)
+    #     # Update model squared accumulator
+    #     self.model_sq_sum += np.sum(np.square(data), axis=0)
+    #     data = data.reshape((data.shape[0], -1))
+    #     # Update product accumulator
+    #     self.prod_sum += np.matmul(data.T, traces)
 
-    def calculate(self):
-        # Sample mean computation
-        sample_mean = np.divide(self.sample_sum, self.trace_count)
-        # Model mean computation
-        model_mean = np.divide(self.model_sum, self.trace_count)
+    # def calculate(self):
+    #     # Sample mean computation
+    #     sample_mean = np.divide(self.sample_sum, self.trace_count)
+    #     # Model mean computation
+    #     model_mean = np.divide(self.model_sum, self.trace_count)
 
-        prod_mean = np.divide(self.prod_sum, self.trace_count)
-        # Calculate correlation coefficient numerator
-        numerator = np.subtract(prod_mean, model_mean*sample_mean)
-        # Calculate correlation coeefficient denominator sample part
-        to_sqrt = np.subtract(np.divide(self.sample_sq_sum, self.trace_count), np.square(sample_mean))
-        to_sqrt[to_sqrt < 0] = 0
-        denom_sample = np.sqrt(to_sqrt)
-        # Calculate correlation coefficient denominator model part
-        to_sqrt = np.subtract(np.divide(self.model_sq_sum, self.trace_count), np.square(model_mean))
-        to_sqrt = np.maximum(to_sqrt, 0)
-        denom_model = np.sqrt(to_sqrt)
+    #     prod_mean = np.divide(self.prod_sum, self.trace_count)
+    #     # Calculate correlation coefficient numerator
+    #     numerator = np.subtract(prod_mean, model_mean*sample_mean)
+    #     # Calculate correlation coeefficient denominator sample part
+    #     to_sqrt = np.subtract(np.divide(self.sample_sq_sum, self.trace_count), np.square(sample_mean))
+    #     to_sqrt[to_sqrt < 0] = 0
+    #     denom_sample = np.sqrt(to_sqrt)
+    #     # Calculate correlation coefficient denominator model part
+    #     to_sqrt = np.subtract(np.divide(self.model_sq_sum, self.trace_count), np.square(model_mean))
+    #     to_sqrt = np.maximum(to_sqrt, 0)
+    #     denom_model = np.sqrt(to_sqrt)
 
-        denominator = denom_model*denom_sample
+    #     denominator = denom_model*denom_sample
 
-        denominator[denominator == 0] = 1
+    #     denominator[denominator == 0] = 1
 
-        return np.divide(numerator, denominator)
+    #     return np.divide(numerator, denominator)
 
     def perform_cpa(self):
         """执行相关系数分析"""
@@ -106,10 +129,14 @@ class CPAAnalysis(PPBasic):
         correlation = np.zeros((256, 16, self.sel_num_samples), dtype=np.float32)
         
 
-        traces = self.t[:, self.sample_range[0]:self.sample_range[1]]
+        traces = self.t[:self.sel_num_traces, self.sample_range[0]:self.sample_range[1]]
         
         # plaintext_bytes = np.array([pt[self.byte_pos] for pt in self.plaintext[:self.sel_num_traces]])
-        plaintext_bytes = self.plaintext[:self.sel_num_traces, :16]
+        if self.dr == 'enc':
+            plaintext_bytes = self.plaintext[:self.sel_num_traces, :16]
+        elif self.dr == 'dec':
+            ciphertext_bytes = self.plaintext[:self.sel_num_traces, :16].compute()
+            
         # key_bytes = np.arange(256)[:, np.newaxis]
         # xor_result = np.bitwise_xor(plaintext_bytes, key_bytes)
         # sbox_output = AES_SBOX[xor_result]
@@ -118,12 +145,18 @@ class CPAAnalysis(PPBasic):
         # 创建Dask延迟计算任务
         def compute_correlation(key_byte):
             key_byte_array = np.full((self.sel_num_traces, 16), key_byte, dtype=np.uint8)
-            xor_result = np.bitwise_xor(plaintext_bytes, key_byte_array)
-            sbox_output = AES_SBOX[xor_result]
-            hw_matrix = WEIGHTS[sbox_output]
-            
+            if self.dr == 'enc':            
+                xor_result = np.bitwise_xor(plaintext_bytes, key_byte_array)
+                sbox_output = AES_SBOX[xor_result]
+                hw_matrix = WEIGHTS[sbox_output]
+            elif self.dr == 'dec':
+                xor_result = np.bitwise_xor(ciphertext_bytes, key_byte_array)
+                sbox_output = np.bitwise_xor(AES_invSBOX[xor_result], inv_shift_rows(ciphertext_bytes))
+                hw_matrix = WEIGHTS[sbox_output]
+        
+            trace_count = self.sel_num_traces
             # 使用Dask进行延迟计算
-            trace_count = da.from_array([self.sel_num_traces], chunks=1)
+            # trace_count = da.from_array([self.sel_num_traces], chunks=1)
             sample_sum = da.sum(traces, axis=0)
             model_sum = da.sum(hw_matrix, axis=0)
             prod_sum = da.dot(hw_matrix.T, traces)
@@ -183,7 +216,9 @@ class CPAAnalysis(PPBasic):
 
 if __name__ == "__main__":
     # 示例用法
-    cpa = CPAAnalysis(input_path=r'D:\project\cracknuts\demo\jupyter\dataset\20250521110621.zarr')
+    cpa = CPAAnalysis(input_path=r'E:\\codes\\Acquisition\\dataset\\20250724071935.zarr', dr='dec')
+    # cpa = CPAAnalysis(input_path=r'E:\\codes\\template\\dataset\\nut476_aes_random_data.zarr', dr='enc')
+    
     cpa.auto_out_filename()
-    cpa.set_range(sample_range=(500, 10000))  # 设置分析的采样点范围
+    # cpa.set_range(sample_range=(4000, 5200))  # 设置分析的采样点范围
     cpa.perform_cpa()
