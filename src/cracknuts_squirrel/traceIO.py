@@ -43,9 +43,9 @@ class DaskZarrIO:
         else:
             self.key = None
         if os.path.exists(self.input_path+tile+'ciphertext'):
-            self.metadata = da.from_zarr(self.input_path+tile+'ciphertext')
+            self.ciphertext = da.from_zarr(self.input_path+tile+'ciphertext')
         else:
-            self.metadata = None
+            self.ciphertext = None
 
     def set_range(self, trace_range=None, sample_range=None):
         """
@@ -137,7 +137,24 @@ def merge_zarr_files(file1, file2, output_file, tile='/0/0/', axis=0):
         shape=(merged.shape[0], merged.shape[1]),
         data = merged.compute()
     )
-    #TODO: 合并明文、密文和密钥
+    
+    plain1 = da.from_zarr(file1+tile+'plaintext')
+    plain2 = da.from_zarr(file2+tile+'plaintext')
+    merged_plaintext = da.concatenate([plain1, plain2], axis=0)
+    # 从file1到file2合并
+    root.create_dataset(
+        '/0/0/plaintext', 
+        shape=(merged_plaintext.shape[0], merged_plaintext.shape[1]),
+        data = merged_plaintext.compute()
+    )
+    cipher1 = da.from_zarr(file1+tile+'ciphertext')
+    cipher2 = da.from_zarr(file2+tile+'ciphertext')
+    merged_ciphertext = da.concatenate([cipher1, cipher2], axis=0)
+    root.create_dataset(
+        '/0/0/ciphertext', 
+        shape=(merged_ciphertext.shape[0], merged_ciphertext.shape[1]),
+        data = merged_ciphertext.compute()
+    )
 
     # 加载file1的traces数据集
     file1_store = zarr.DirectoryStore(file1)
@@ -150,11 +167,11 @@ def merge_zarr_files(file1, file2, output_file, tile='/0/0/', axis=0):
 
 if __name__ == "__main__":
     # 示例用法
-    input_path = "E:\\codes\\template\\dataset\\20250221202721.zarr"
-    output_path = "dataset/dask_output.zarr"
+    # input_path = "E:\\codes\\template\\dataset\\20250221202721.zarr"
+    # output_path = "dataset/dask_output.zarr"
     
-    test = DaskZarrIO(input_path=input_path)
-    print(test.t[0].compute())
+    # test = DaskZarrIO(input_path=input_path)
+    # print(test.t[0].compute())
     
     # 读取示例
     # dask_data = read_zarr_with_dask(input_path)
@@ -165,3 +182,5 @@ if __name__ == "__main__":
     
     # 写入示例
     # write_dask_to_zarr(dask_data, output_path)
+    merge_zarr_files('E:\\codes\\Acquisition\\dataset\\merged1.zarr', 'E:\\codes\\Acquisition\\dataset\\merged.zarr', 'E:\\codes\\Acquisition\\dataset\\merged2.zarr')
+
