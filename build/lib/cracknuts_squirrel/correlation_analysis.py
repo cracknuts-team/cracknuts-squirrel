@@ -1,6 +1,6 @@
 import numpy as np
 import zarr
-from cracknuts_squirrel.preprocessing_basic import PPBasic
+from preprocessingBasic import PPBasic
 import matplotlib.pyplot as plt
 
 # Hamming weights of the values 0-255 used for model values
@@ -109,9 +109,9 @@ class CorrelationAnalysis(PPBasic):
 
 if __name__ == "__main__":
     # 示例用法
-    analyzer = CorrelationAnalysis(input_path='E:\\codes\\Acquisition\\dataset\\20250722204543.zarr')
+    analyzer = CorrelationAnalysis(input_path=r'D:\project\cracknuts-test\dataset\20250617104740.zarr')
     analyzer.auto_out_filename()
-    # analyzer.set_range(sample_range=(500, 10000))
+    analyzer.set_range(sample_range=(500, 10000))
     
     result = analyzer.perform_analysis()
 

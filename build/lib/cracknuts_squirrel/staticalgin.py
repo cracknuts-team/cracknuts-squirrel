@@ -1,6 +1,6 @@
 from enum import auto
 import dask.array as da
-from cracknuts_squirrel.preprocessing_basic import PPBasic
+from preprocessingBasic import PPBasic
 import numba as nb
 import numpy as np
 import scipy as sp
