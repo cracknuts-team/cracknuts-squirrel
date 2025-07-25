@@ -157,16 +157,16 @@ class CPAAnalysis(PPBasic):
         max_indices = np.argmax(np.abs(correlation), axis=2)
         candidates = np.take_along_axis(correlation, max_indices[:, :, np.newaxis], axis=2).squeeze()
         
-        for j in self.byte_pos:
-            # 获取当前字节的最优候选
-            best_key = np.abs(candidates[:, j]).argmax()
-            print(f'第{j+1}字节密钥: {hex(best_key)} 相关系数: {candidates[best_key, j]:.4f}')
+        # for j in self.byte_pos:
+        #     # 获取当前字节的最优候选
+        #     best_key = np.abs(candidates[:, j]).argmax()
+        #     print(f'第{j+1}字节密钥: {hex(best_key)} 相关系数: {candidates[best_key, j]:.4f}')
             
-            # 获取前5候选（向量化版本）
-            top5_indices = np.argsort(np.abs(candidates[:, j]))[::-1][:5]
-            for rank, idx in enumerate(top5_indices, 1):
-                print(f'第{rank}候选值：{hex(idx)}，相关系数：{candidates[idx, j]:.4f}')
-            print('\n')
+        #     # 获取前5候选（向量化版本）
+        #     top5_indices = np.argsort(np.abs(candidates[:, j]))[::-1][:5]
+        #     for rank, idx in enumerate(top5_indices, 1):
+        #         print(f'第{rank}候选值：{hex(idx)}，相关系数：{candidates[idx, j]:.4f}')
+        #     print('\n')
 
         root.create_dataset(
             '/0/0/correlation',
