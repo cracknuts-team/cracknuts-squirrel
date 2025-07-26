@@ -75,7 +75,7 @@ class InMemoryTraceDataset(Dataset):
         trace = self.traces[i, self.trace_offset:self.trace_offset+self.trace_length]
         trace = trace.reshape(1, -1).astype(np.float32) / 64.0  # 修改为(1, length)格式
         # label = Sbox[self.plaintext[i, self.byte_index] ^ key_suppose]
-        label = Sbox[self.plaintext[i, self.byte_index] ^ key_suppose] ^ self.plaintext[i, self.byte_index]
+        label = inv_sbox[self.plaintext[i, self.byte_index] ^ key_suppose] ^ self.plaintext[i, self.byte_index]
         
         # 转换为PyTorch张量
         return torch.tensor(trace, dtype=torch.float32), torch.tensor(label, dtype=torch.long)
@@ -271,8 +271,6 @@ def get_plaintext(test_index, dataset_name):
     zarr_store = zarr.DirectoryStore(dataset_name)
     zarr_group = zarr.open(zarr_store, mode='r')
     
-    # 加载所有需要的traces和labels到内存
-    # 注意：这会占用大量内存，请确保系统有足够的RAM
     plaintexts = np.array(zarr_group['0/0/plaintext'])
     length = len(test_index)
     plain_text_need = np.zeros(length)
@@ -395,17 +393,17 @@ trace_length = 2000
 units = 128
 batch_size = 200
 epochs_per_save = 5
-total_epoch = 10
+total_epoch = 5
 epoch_offset = 0
 
-byte_index = 2
+byte_index = 3
 # key_array = [0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99,0x00,0xaa,0xbb,0xcc,0xdd,0xee,0xff]
 # key_array = [0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C]
 key_array = [0xd0, 0x14, 0xf9, 0xa8, 0xc9, 0xee, 0x25, 0x89, 0xe1, 0x3f, 0xc, 0xc8, 0xb6, 0x63, 0xc, 0xa6]
 key_suppose = key_array[byte_index]
 
 train_index = np.arange(0,200000)
-test_index = np.arange(200000,250000)
+test_index = np.arange(0,50000)
 train_num = 200000
 test_num = 50000
 pic_num = 5000
@@ -422,6 +420,7 @@ Sbox = [99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,118,202,130,201,1
 
 
 # 初始化模型和优化器
+# model = LSTMModel(trace_length, units)
 model = AESHDModel(trace_length, units)
 optimizer = optim.Adam(model.parameters(), lr=0.0001)
 criterion = nn.CrossEntropyLoss()
