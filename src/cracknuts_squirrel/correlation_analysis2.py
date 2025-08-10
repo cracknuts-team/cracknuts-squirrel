@@ -1,8 +1,17 @@
+from dataclasses import dataclass
+from typing import Optional
+
 import numpy as np
 import zarr
 
 from cracknuts_squirrel.preprocessing_basic import PPBasic
 
+@dataclass
+class AnalysisParams:
+    data_type: str = "plaintext"
+    data_width: int = 1
+    start: int = 0
+    count: Optional[int] = None
 
 class CorrelationAnalysis(PPBasic):
     # Hamming weights of the values 0-255 used for model values
@@ -117,26 +126,67 @@ class CorrelationAnalysis(PPBasic):
 
         return correlations
 
-    def perform_analysis(self, data_type="plaintext", bit_width=8):
+    def perform_analysis(self, *analyzer_params: AnalysisParams, persist: bool=False) -> np.ndarray:
+        correlation_matrix_array = []
+        for analyzer_param in analyzer_params:
+            correlation_matrix_array.append(self.single_perform_analysis(**vars(analyzer_param)))
+
+        correlation_matrix = np.vstack(correlation_matrix_array)
+
+        if persist:
+            store = zarr.DirectoryStore(self.output_path)
+            root = zarr.group(store=store, overwrite=True)
+            # 存储结果
+            root.create_dataset(
+                '/0/0/correlation',
+                data=correlation_matrix,
+                chunks=(16, 1000)
+            )
+
+            # 添加元数据
+            root.attrs.update({
+                "analysis_metadata": {
+                    "sample_range": self.sample_range,
+                    "trace_count": self.sel_num_traces,
+                    "model_type": "hamming_weight"
+                }
+            })
+
+        return correlation_matrix
+
+    def single_perform_analysis(self, data_type="plaintext", data_width=1, start: int = 0, count: int = None):
         """
         执行相关系数分析（使用明文字节的汉明重量作为模型值）
         """
-        store = zarr.DirectoryStore(self.output_path)
-        root = zarr.group(store=store, overwrite=True)
-    
         # 获取处理后的轨迹数据
         processed_traces = self.t[:, self.sample_range[0]:self.sample_range[1]]
 
         if data_type == "plaintext":
             # 获取明文字节并计算汉明重量
-            plaintext = self.plaintext[:self.sel_num_traces, :]
-            hw_matrix = self.hamming_weight(plaintext, bit_width)
+            if count is None:
+                plaintext = self.plaintext[:self.sel_num_traces, start:]
+            else:
+                plaintext = self.plaintext[:self.sel_num_traces, start:start+count]
+            print(f"长度：{plaintext.shape}")
+            hw_matrix = self.hamming_weight(plaintext, data_width * 8)
         elif data_type == "ciphertext":
-            ciphertext = self.ciphertext[:self.sel_num_traces, :]
-            hw_matrix = self.hamming_weight(ciphertext, bit_width)
+            if count is None:
+                ciphertext = self.ciphertext[:self.sel_num_traces, start:]
+            else:
+                ciphertext = self.ciphertext[:self.sel_num_traces, start:start+count]
+            hw_matrix = self.hamming_weight(ciphertext, data_width * 8)
         elif data_type == "key":
-            key = self.key[:self.sel_num_traces, :]
-            hw_matrix = self.hamming_weight(key, bit_width)
+            if count is None:
+                key = self.key[:self.sel_num_traces, start:]
+            else:
+                key = self.key[:self.sel_num_traces, start:start+count]
+            hw_matrix = self.hamming_weight(key, data_width * 8)
+        elif data_type == "extended":
+            if count is None:
+                extended = self.extended[:self.sel_num_traces, start:]
+            else:
+                extended = self.extended[:self.sel_num_traces, start:start+count]
+            hw_matrix = self.hamming_weight(extended, data_width * 8)
         else:
             print(f"data_type error: [{data_type}].")
             return
@@ -146,43 +196,5 @@ class CorrelationAnalysis(PPBasic):
             traces=processed_traces,
             data_bytes=hw_matrix
         )
-    
-        # 存储结果
-        root.create_dataset(
-            '/0/0/correlation',
-            data=correlation_matrix,
-            chunks=(16, 1000)
-        )
-    
-        # 添加元数据
-        root.attrs.update({
-            "analysis_metadata": {
-                "sample_range": self.sample_range,
-                "trace_count": self.sel_num_traces,
-                "model_type": "hamming_weight"
-            }
-        })
+
         return correlation_matrix
-
-if __name__ == "__main__":
-
-    # d = np.frombuffer(bytes.fromhex("00 01 02 03 04 05 06 07"), dtype=np.uint8).reshape((-1, 4))
-    #
-    # print(CorrelationAnalysis.hamming_weight(data=d, bit_width=4))
-
-    # 示例用法
-    import matplotlib.pyplot as plt
-
-    analyzer = CorrelationAnalysis(input_path=r'D:\project\cracknuts\demo\jupyter\dataset\20250521110621(aes).zarr')
-    analyzer.auto_out_filename()
-    # analyzer.set_range(sample_range=(500, 10000))
-
-    result = analyzer.perform_analysis(data_type="plaintext", bit_width=2)
-
-    print(result.shape)
-    for x in range(result.shape[0]):
-        plt.plot(result[x,:])
-
-    plt.show()
-
-    print(f"分析完成，最大相关系数：{np.nanmax(np.abs(result)):.4f}")
