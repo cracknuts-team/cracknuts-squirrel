@@ -46,6 +46,10 @@ class DaskZarrIO:
             self.ciphertext = da.from_zarr(self.input_path+tile+'ciphertext')
         else:
             self.ciphertext = None
+        if os.path.exists(self.input_path+tile+'extended'):
+            self.extended = da.from_zarr(self.input_path+tile+'extended')
+        else:
+            self.extended = None
 
     def set_range(self, trace_range=None, sample_range=None):
         """
