@@ -1,6 +1,7 @@
 import dask.array as da
 import zarr
 import os
+import h5py  # 添加h5py导入
 
 class DaskZarrIO:
     """
@@ -165,6 +166,102 @@ def merge_zarr_files(file1, file2, output_file, tile='/0/0/', axis=0):
     
 
 
+def convert_zarr_to_h5(zarr_path, h5_path, tile='/0/0/'):
+    """
+    将zarr文件转换为h5文件
+    :param zarr_path: 输入zarr文件路径
+    :param h5_path: 输出h5文件路径
+    :param tile: 数据tile路径
+    """
+    # 检查输入文件是否存在
+    if not os.path.exists(zarr_path):
+        raise FileNotFoundError(f"输入zarr文件不存在: {zarr_path}")
+    
+    # 创建h5文件
+    with h5py.File(h5_path, 'w') as h5f:
+        # 打开zarr文件
+        zarr_store = zarr.DirectoryStore(zarr_path)
+        zarr_group = zarr.open(zarr_store, mode='r')
+        
+        # 复制traces数据
+        if f'{tile}traces' in zarr_group:
+            traces_data = zarr_group[f'{tile}traces']
+            h5f.create_dataset('traces', data=traces_data[:])
+            print(f"已转换 traces 数据，形状: {traces_data.shape}")
+        
+        # 复制plaintext数据
+        if f'{tile}plaintext' in zarr_group:
+            plaintext_data = zarr_group[f'{tile}plaintext']
+            h5f.create_dataset('plaintext', data=plaintext_data[:])
+            print(f"已转换 plaintext 数据，形状: {plaintext_data.shape}")
+        
+        # 复制key数据
+        if f'{tile}key' in zarr_group:
+            key_data = zarr_group[f'{tile}key']
+            h5f.create_dataset('key', data=key_data[:])
+            print(f"已转换 key 数据，形状: {key_data.shape}")
+        
+        # 复制ciphertext数据
+        if f'{tile}ciphertext' in zarr_group:
+            ciphertext_data = zarr_group[f'{tile}ciphertext']
+            h5f.create_dataset('ciphertext', data=ciphertext_data[:])
+            print(f"已转换 ciphertext 数据，形状: {ciphertext_data.shape}")
+        
+        # 复制属性
+        for key, value in zarr_group.attrs.items():
+            h5f.attrs[key] = value
+        
+        print(f"成功将 {zarr_path} 转换为 {h5_path}")
+
+
+def convert_h5_to_zarr(h5_path, zarr_path, tile='/0/0/'):
+    """
+    将h5文件转换为zarr文件
+    :param h5_path: 输入h5文件路径
+    :param zarr_path: 输出zarr文件路径
+    :param tile: 数据tile路径
+    """
+    # 检查输入文件是否存在
+    if not os.path.exists(h5_path):
+        raise FileNotFoundError(f"输入h5文件不存在: {h5_path}")
+    
+    # 创建zarr文件
+    store = zarr.DirectoryStore(zarr_path)
+    root = zarr.group(store=store, overwrite=True)
+    
+    # 打开h5文件
+    with h5py.File(h5_path, 'r') as h5f:
+        # 复制traces数据
+        if 'traces' in h5f:
+            traces_data = h5f['traces']
+            root.create_dataset(f'{tile}traces', data=traces_data[:], shape=traces_data.shape, dtype=traces_data.dtype)
+            print(f"已转换 traces 数据，形状: {traces_data.shape}")
+        
+        # 复制plaintext数据
+        if 'plaintext' in h5f:
+            plaintext_data = h5f['plaintext']
+            root.create_dataset(f'{tile}plaintext', data=plaintext_data[:], shape=plaintext_data.shape, dtype=plaintext_data.dtype)
+            print(f"已转换 plaintext 数据，形状: {plaintext_data.shape}")
+        
+        # 复制key数据
+        if 'key' in h5f:
+            key_data = h5f['key']
+            root.create_dataset(f'{tile}key', data=key_data[:], shape=key_data.shape, dtype=key_data.dtype)
+            print(f"已转换 key 数据，形状: {key_data.shape}")
+        
+        # 复制ciphertext数据
+        if 'ciphertext' in h5f:
+            ciphertext_data = h5f['ciphertext']
+            root.create_dataset(f'{tile}ciphertext', data=ciphertext_data[:], shape=ciphertext_data.shape, dtype=ciphertext_data.dtype)
+            print(f"已转换 ciphertext 数据，形状: {ciphertext_data.shape}")
+        
+        # 复制属性
+        for key, value in h5f.attrs.items():
+            root.attrs[key] = value
+        
+        print(f"成功将 {h5_path} 转换为 {zarr_path}")
+
+
 if __name__ == "__main__":
     # 示例用法
     # input_path = "E:\\codes\\template\\dataset\\20250221202721.zarr"
@@ -182,5 +279,5 @@ if __name__ == "__main__":
     
     # 写入示例
     # write_dask_to_zarr(dask_data, output_path)
-    merge_zarr_files('E:\\codes\\Acquisition\\dataset\\merged1.zarr', 'E:\\codes\\Acquisition\\dataset\\merged.zarr', 'E:\\codes\\Acquisition\\dataset\\merged2.zarr')
+    merge_zarr_files('E:\\codes\\Acquisition\\dataset\\20250724071935.zarr', 'E:\\codes\\Acquisition\\dataset\\20250725070406.zarr', 'E:\\codes\\Acquisition\\dataset\\merged.zarr')
 
