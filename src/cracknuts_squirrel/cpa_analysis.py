@@ -1,3 +1,5 @@
+# Copyright 2024 CrackNuts. All rights reserved.
+
 import numba as nb
 import numpy as np
 import zarr

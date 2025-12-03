@@ -1,3 +1,5 @@
+# Copyright 2024 CrackNuts. All rights reserved.
+
 import numpy as np
 import zarr
 from preprocessing_basic import PPBasic

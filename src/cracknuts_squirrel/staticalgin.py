@@ -1,3 +1,5 @@
+# Copyright 2024 CrackNuts. All rights reserved.
+
 from enum import auto
 import dask.array as da
 from cracknuts_squirrel.preprocessing_basic import PPBasic

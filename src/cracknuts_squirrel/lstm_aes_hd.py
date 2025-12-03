@@ -1,12 +1,13 @@
+# Copyright 2024 CrackNuts. All rights reserved.
+
+from collections import Counter
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-import numpy as np
-import matplotlib.pyplot as plt
-from collections import Counter
 import zarr
-import os
+from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
 # 设置随机种子保证可重复性

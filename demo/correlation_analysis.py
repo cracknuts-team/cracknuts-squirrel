@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from cracknuts_squirrel.correlation_analysis2 import CorrelationAnalysis, AnalysisParams
 
-analyzer = CorrelationAnalysis(input_path=r'D:\download\20250521110621(aes).zarr')
+# analyzer = CorrelationAnalysis(input_path=r'D:\project\cracknuts\demo\jupyter\dataset\20250521110621(aes).zarr')
+analyzer = CorrelationAnalysis(input_path=r'D:\project\cracknuts-show\dataset\20250908100850.zarr')
 analyzer.auto_out_filename()
 # analyzer.set_range(sample_range=(500, 10000))
 

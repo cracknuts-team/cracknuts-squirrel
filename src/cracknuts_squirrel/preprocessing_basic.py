@@ -1,3 +1,5 @@
+# Copyright 2024 CrackNuts. All rights reserved.
+
 from cracknuts_squirrel.trace_io import DaskZarrIO
 import dask.array as da
 from pathlib import Path

@@ -1,9 +1,13 @@
-import torch
-import torch.nn as nn
-import numpy as np
-import zarr
+# Copyright 2024 CrackNuts. All rights reserved.
+
 from collections import Counter
+
+import numpy as np
+import torch
+import zarr
+
 from lstm_aes_hd import AESHDModel, Sbox, inv_sbox, calc_GE
+
 
 def load_model(model_path, trace_length, units):
     """加载训练好的模型"""
