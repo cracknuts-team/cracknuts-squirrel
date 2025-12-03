@@ -167,7 +167,6 @@ class CorrelationAnalysis(PPBasic):
                 plaintext = self.plaintext[:self.sel_num_traces, start:]
             else:
                 plaintext = self.plaintext[:self.sel_num_traces, start:start+count]
-            print(f"长度：{plaintext.shape}")
             hw_matrix = self.hamming_weight(plaintext, data_width * 8)
         elif data_type == "ciphertext":
             if count is None:
