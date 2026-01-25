@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 import zarr
+from tqdm.auto import tqdm
 
 from cracknuts_squirrel.preprocessing_basic import PPBasic
 
@@ -42,6 +43,7 @@ class CorrelationAnalysis(PPBasic):
     def __init__(self, input_path=None, output_path=None, sample_range=(0, None), **kwargs):
         super().__init__(input_path=input_path, output_path=output_path, **kwargs)
         self.sample_range = sample_range
+        self._prbar: None | tqdm = None
 
     @classmethod
     def hamming_weight(cls, data: np.ndarray, bit_width: int) -> np.ndarray:
@@ -85,8 +87,7 @@ class CorrelationAnalysis(PPBasic):
 
             return cls._HW_TABLE[result]
 
-    @staticmethod
-    def calculate_correlation(traces, data_bytes):
+    def calculate_correlation(self, traces, data_bytes):
         """
         计算轨迹(traces)与明文字节(plaintext_bytes)之间的相关系数
         
@@ -125,14 +126,33 @@ class CorrelationAnalysis(PPBasic):
                     correlations[byte_idx, sample_idx] = 0  # 或者 np.nan
                 else:
                     correlations[byte_idx, sample_idx] = np.corrcoef(byte_data, trace_data)[0, 1]
+                if self._prbar is not None:
+                    self._prbar.update(1)
 
         return correlations
 
-    def perform_analysis(self, *analyzer_params: AnalysisParams, persist: bool=False) -> np.ndarray:
+    def perform_analysis(self, *analyzer_params: AnalysisParams, persist: bool=False, progressbar=True) -> np.ndarray:
+        if progressbar:
+            progressbar_total = 0
+            for analyzer_param in analyzer_params:
+                if analyzer_param.data_type == "plaintext":
+                    data_bytes_len = self.plaintext.shape[1] if analyzer_param.count is None else analyzer_param.count
+                elif analyzer_param.data_type == "ciphertext":
+                    data_bytes_len = self.ciphertext.shape[1] if analyzer_param.count is None else analyzer_param.count
+                elif analyzer_param.data_type == "key":
+                    data_bytes_len = self.key.shape[1] if analyzer_param.count is None else analyzer_param.count
+                else:
+                    data_bytes_len = 16
+                data_width = 1 if analyzer_param.data_width is None else analyzer_param.data_width
+                data_len = data_bytes_len / data_width
+                sample_len = self.t.shape[1] if self.sample_range[1] is None else self.sample_range[1] - self.sample_range[0]
+                progressbar_total += data_len * sample_len
+            self._prbar = tqdm(total=progressbar_total , desc="Analyzing")
         correlation_matrix_array = []
         for analyzer_param in analyzer_params:
+            self._prbar.set_description(f"Analyzing {analyzer_param.data_type}")
             correlation_matrix_array.append(self.single_perform_analysis(**vars(analyzer_param)))
-
+        self._prbar.close()
         correlation_matrix = np.vstack(correlation_matrix_array)
 
         if persist:
