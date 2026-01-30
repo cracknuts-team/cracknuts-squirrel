@@ -111,7 +111,7 @@ class CorrelationAnalysis(PPBasic):
 
 if __name__ == "__main__":
     # 示例用法
-    analyzer = CorrelationAnalysis(input_path='E:\\codes\\Acquisition\\dataset\\20250722204543.zarr')
+    analyzer = CorrelationAnalysis(input_path=r'D:\work\01.testing\99.test_dataset\smt32f103_aes_power_10000.zarr')
     analyzer.auto_out_filename()
     # analyzer.set_range(sample_range=(500, 10000))
     
