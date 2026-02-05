@@ -233,9 +233,9 @@ def __main__():
         width=0.5,
         jitter_std=1.5
     )
-    # traces = add_jitter(traces, max_shift=1, std=0.1)  # 调小或者注释，可以模拟对齐后的曲线
+    # traces = add_jitter(traces, max_shift=7, std=1)  # 调小或者注释，可以模拟对齐后的曲线
     traces = add_noise(traces, max_sigma=50, noise_std=5.0) # 调小或者注释可以模拟删除噪声曲线的情况
-    # traces = add_spikes(traces, seed=42) # 可以注释，模拟无毛刺情况
+    traces = add_spikes(traces, seed=42) # 可以注释，模拟无毛刺情况
     print(traces.shape)
     plt.figure(figsize = (18,6))
 
