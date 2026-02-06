@@ -427,7 +427,8 @@ def gen_aes_golden_trace(
         # for jitter parameters
         do_jitter: bool = True,
         jitter_max_shift=5,
-        jitter_std=2.0
+        jitter_std=2.0,
+        save_to_zarr=None
 ):
     """
     生成 AES Golden Trace（用于侧信道分析的功耗曲线仿真）。
@@ -600,6 +601,9 @@ def gen_aes_golden_trace(
 
         会显著降低未对齐 CPA 的攻击效果。
     :type jitter_std: float
+    :param save_to_zarr:
+        若设置则保存到对应的路径，格式为 zarr，名称为: 日期+aes_golden_trace.zarr。
+    :type save_to_zarr: str or None
 
     --------------------
     返回值
@@ -610,6 +614,10 @@ def gen_aes_golden_trace(
 
         - ``traces``：生成的功耗曲线
           shape = ``(num_traces, num_samples)``
+        - ``plaintext``：对应的明文
+          shape = ``(num_traces, 16)``
+        - ``ciphertexts``：对应的密文
+          shape = ``(num_traces, 16)``
         - ``leakage``：真实泄露变量
           shape = ``(num_traces, 16)``
     :rtype: tuple[numpy.ndarray, numpy.ndarray]
@@ -706,5 +714,26 @@ def gen_aes_golden_trace(
             std=jitter_std
         )
 
-    return traces, leakage
+    ciphertext = np.zeros((num_traces, 16), dtype=np.uint8)
+    if save_to_zarr is not None:
+        import zarr
+        import datetime
+        from Crypto.Cipher import AES
+
+        # 真实计算密文
+        key_bytes = key.tobytes()
+        cipher = AES.new(key_bytes, AES.MODE_ECB)
+        for i in range(plaintext.shape[0]):
+            ciphertext[i, :] = np.frombuffer(cipher.encrypt(plaintext[i].tobytes()), dtype=np.uint8)
+
+        date_str = datetime.datetime.now().strftime("%Y%m%d")
+        zarr_path = f"{save_to_zarr}/{date_str}_aes_golden_trace.zarr"
+        zarr_root = zarr.open(zarr_path, mode='w')
+        group_root = zarr_root.create_group('/0/0')
+        group_root.create_dataset('traces', data=traces)
+        group_root.create_dataset('plaintext', data=plaintext)
+        group_root.create_dataset('ciphertexts', data=ciphertext)
+        print(f"Saved traces and leakage to {zarr_path}")
+
+    return traces, plaintext, ciphertext, leakage
 

@@ -1,15 +1,17 @@
 from cracknuts_squirrel.correlation_analysis3 import correlation_analysis
+from cracknuts_squirrel.cpa_analysis import CPAAnalysis
 from cracknuts_squirrel.generate_trace import gen_aes_golden_trace
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-traces, leakage = gen_aes_golden_trace(
+traces, plaintext, ciphertext, leakage = gen_aes_golden_trace(
     # base_trace=np.load('./base_trace.npy'),
     num_traces=2000,
     key=np.array([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff], dtype=np.uint8),
     leakage_model='ID',
-    do_jitter=False
+    do_jitter=False,
+    save_to_zarr='.'
 )
 
 print(f"the traces shape: {traces.shape}")
@@ -26,8 +28,11 @@ plt.title('Generated AES Golden Traces')
 plt.show()
 
 
-corr = correlation_analysis(traces, leakage)
-for i, t in enumerate(corr):
-    plt.plot(t, alpha=0.5, linewidth = 1, label = i)
-plt.legend()
-plt.show()
+# corr = correlation_analysis(traces, leakage)
+# for i, t in enumerate(corr):
+#     plt.plot(t, alpha=0.5, linewidth = 1, label = i)
+
+# cpa = CPAAnalysis()
+
+# plt.legend()
+# plt.show()
